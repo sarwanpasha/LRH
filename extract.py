@@ -159,6 +159,42 @@ def load_mmlu():
     return out
 
 
+FEWSHOT = ("Question: what is the capital city of australia\nAnswer: Canberra\n\n"
+           "Question: who wrote the novel pride and prejudice\nAnswer: Jane Austen\n\n"
+           "Question: how many legs does a spider have\nAnswer: eight\n\n")
+
+
+def _norm(s):
+    import re, string
+    s = s.lower()
+    s = "".join(ch for ch in s if ch not in set(string.punctuation))
+    s = re.sub(r"\b(a|an|the)\b", " ", s)
+    return " ".join(s.split())
+
+
+@torch.no_grad()
+def gen_nq(model, tok, batch_size, max_q=3610):
+    """Self-generated answers on NQ-Open: greedy answers of the model itself, labeled by answer match."""
+    from datasets import load_dataset
+    ds = load_dataset("google-research-datasets/nq_open", split="validation")
+    qs = [(ex["question"], ex["answer"]) for ex in ds][:max_q]
+    out = []
+    for i in range(0, len(qs), batch_size):
+        chunk = qs[i:i + batch_size]
+        prompts = [FEWSHOT + f"Question: {q}\nAnswer:" for q, _ in chunk]
+        enc = tok(prompts, return_tensors="pt", padding=True).to(model.device)
+        gen = model.generate(**enc, max_new_tokens=16, do_sample=False, pad_token_id=tok.pad_token_id)
+        texts = tok.batch_decode(gen[:, enc["input_ids"].shape[1]:], skip_special_tokens=True)
+        for (q, golds), t in zip(chunk, texts):
+            ans = t.strip().split("\n")[0].strip()
+            if not ans:
+                continue
+            na = _norm(ans)
+            lab = int(any(_norm(gd) and (_norm(gd) == na or _norm(gd) in na) for gd in golds))
+            out.append((QA_T.format(q=q, a=ans), lab))
+    return out
+
+
 SPECIAL = {"truthfulqa": load_truthfulqa, "halueval_qa": load_halueval, "fever": load_fever,
            "truthfulqa_mc": load_truthfulqa_mc, "halueval_dialogue": load_halueval_dialogue,
            "halueval_summ": load_halueval_summ, "sciq": load_sciq, "medmcqa": load_medmcqa, "boolq": load_boolq,
@@ -207,7 +243,10 @@ def main():
             print("[skip]", path, flush=True)
             continue
         t0 = time.time()
-        items = SPECIAL[name]() if name in SPECIAL else load_csv(name)
+        if name == "nqgen":
+            items = gen_nq(model, tok, a.batch_size)
+        else:
+            items = SPECIAL[name]() if name in SPECIAL else load_csv(name)
         items = balanced(items, a.max_items)
         H, ntok = [], []
         for i in range(0, len(items), a.batch_size):

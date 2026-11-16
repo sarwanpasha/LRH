@@ -21,5 +21,5 @@ python smt_bayes.py --cache cache --model-tag "$TAG" --layers $LAYERS --lofo \
 python baselines.py --cache cache --model-tag "$TAG" --layers $LAYERS --lofo \
   --out results/baselines_${TAG}.json
 
-# 4) Transfer-law estimators and single-layer baselines (leave-one-dataset-out), one layer.
-python smt2.py --cache cache --model-tag "$TAG" --layer 16 --out results/law_${TAG}_L16.json
+# 4) Transfer-law validation (leave-one-family-out pairs).
+python transfer_law.py --cache cache --model-tag "$TAG" --layers $LAYERS --out results/law_${TAG}.json

@@ -8,16 +8,17 @@ true and false statements from the hidden states of large language models.
 | File | Purpose |
 |---|---|
 | `extract.py` | Loads a model with Hugging Face `transformers`, builds balanced true/false statement sets, and stores the last-token hidden state of every layer (`cache/<model>__<dataset>.npz`). |
-| `smt_bayes.py` | SMT-Bayes: Bayes-optimal direction `(2 Sigma + gamma V + lambda I)^{-1} s` per layer, pooled logistic regression per layer, Bayes-optimal combination across layers from held-out source scores, and the few-shot anchored refit. Also reports LR-prior and the ablation variants. |
+| `smt_bayes.py` | SMT-Bayes (and all baselines and ablations reported in the paper, including stacked multi-layer probes, MDA-style and CORAL-style variants, the closed-form posterior probe, optimal source weights, the diversity curve, and the binormal check): Bayes-optimal direction `(2 Sigma + gamma V + lambda I)^{-1} s` per layer, pooled logistic regression per layer, Bayes-optimal combination across layers from held-out source scores, and the few-shot anchored refit. Also reports LR-prior and the ablation variants. |
 | `baselines.py` | Mass-mean, covariance-corrected mass-mean, TTPD general truth direction, and target-only logistic regression on identical splits. |
-| `smt2.py` | Transfer-law moment estimators (cross-fit and plug-in Gram), law predictions, and shared utilities. |
+| `transfer_law.py` | Validation of the transfer law under leave-one-family-out pairs: single-source, multi-source, few-label, and sample-size predictions. |
+| `smt2.py` | Transfer-law moment estimators (cross-fit and plug-in Gram) and shared utilities. |
 | `smt3.py`, `smt8.py`, `smt11.py`, `smt12.py` | Shared routines (logistic regression with anchoring, cross-validation with out-of-fold scores, dataset families, layer-space moment estimates). |
 | `run_example.sh` | End-to-end example for one model. |
 
 ## Data
 
 Datasets loaded from the Hugging Face Hub (TruthfulQA, HaluEval, FEVER, Climate-FEVER, SciQ, MedMCQA,
-BoolQ, ARC-Challenge, CommonsenseQA, MMLU) are downloaded automatically by `extract.py`.
+BoolQ, ARC-Challenge, CommonsenseQA, MMLU) are downloaded automatically by `extract.py`. The self-generated target (`--datasets nqgen`) lets the model answer NQ-Open questions and labels each answer by matching the reference answers; pass its cache directory to `smt_bayes.py` with `--target-cache` so that it is used only as a target.
 The curated true/false datasets (cities, translations, numerical comparisons, animal classes, elements,
 inventors, facts, and their negated, conjunctive, disjunctive, and German variants, as well as companies,
 common claims, and CounterFact statements) are taken from the public releases accompanying
